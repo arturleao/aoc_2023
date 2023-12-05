@@ -64,7 +64,7 @@ impl Trebuchet {
                 let sub = &line[index..];
 
                 if sub.starts_with(word) {
-                    new_line = new_line.replace(word, &number.to_string());
+                    new_line.replace_range(index..index + 1, &number.to_string());
                     break 'outer;
                 }
             }
