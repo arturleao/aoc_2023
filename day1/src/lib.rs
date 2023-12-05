@@ -50,7 +50,7 @@ impl Trebuchet {
 
         'outer: for (index, _ch) in new_line.char_indices() {
             for (word, number) in self.digits.iter() {
-                let sub = &line[index..];
+                let sub = &new_line[index..];
 
                 if sub.starts_with(word) {
                     new_line.replace_range(index..index + 1, &number.to_string());
@@ -61,7 +61,7 @@ impl Trebuchet {
 
         'outer: for (index, _ch) in new_line.char_indices().rev() {
             for (word, number) in self.digits.iter() {
-                let sub = &line[index..];
+                let sub = &new_line[index..];
 
                 if sub.starts_with(word) {
                     new_line.replace_range(index..index + 1, &number.to_string());
