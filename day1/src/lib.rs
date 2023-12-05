@@ -1,16 +1,13 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, Read};
-use std::num::ParseIntError;
-use std::ops::Add;
 use std::path::Path;
-use std::{env, string};
 
 struct Trebuchet {
     calibration_path: String,
     data: Option<String>,
     calibrated_data: Vec<u32>,
-    words: HashMap<String, u32>,
+    digits: HashMap<String, u32>,
 }
 
 impl Trebuchet {
@@ -19,7 +16,7 @@ impl Trebuchet {
             calibration_path,
             data: None,
             calibrated_data: Vec::new(),
-            words: HashMap::from([
+            digits: HashMap::from([
                 ("one".to_string(), 1),
                 ("two".to_string(), 2),
                 ("three".to_string(), 3),
@@ -49,74 +46,34 @@ impl Trebuchet {
     }
 
     fn format_line(&self, line: String) -> String {
-        println!("Line: {}", line);
-        let mut new_line = String::new();
-        let mut slice_start = 0;
+        let mut new_line = line.clone();
 
-        for (index, ch) in line.char_indices() {
-            let mut found = false;
-            'outer: for (word, number) in self.words.iter() {                
-                let sub = &line[slice_start..];
-                //println!("Searching word {} in {}", word, sub);
+        'outer: for (index, _ch) in new_line.char_indices() {
+            for (word, number) in self.digits.iter() {
+                let sub = &line[index..];
 
                 if sub.starts_with(word) {
-                    new_line.push_str(&number.to_string());
-                    slice_start += word.len();
-                    found = true;
+                    new_line.replace_range(index..index + 1, &number.to_string());
                     break 'outer;
                 }
             }
-
-            if slice_start <= index {
-                if !found {
-                    new_line.push(line.chars().nth(slice_start).unwrap());
-                }
-                slice_start += 1;                
-            }                      
         }
 
-        new_line.push_str("\n");
-        //println!("Final line: {}", new_line);
+        'outer: for (index, _ch) in new_line.char_indices().rev() {
+            for (word, number) in self.digits.iter() {
+                let sub = &line[index..];
+
+                if sub.starts_with(word) {
+                    new_line = new_line.replace(word, &number.to_string());
+                    break 'outer;
+                }
+            }
+        }
 
         new_line
     }
 
-    fn format_data(&mut self) {
-        let mut new_data = String::new();
-
-        match &self.data {
-            Some(data) => {
-                let new_line = data
-                    .lines()
-                    .map(|line| self.format_line(line.to_string()))
-                    .collect();
-                new_data = new_line;
-            }
-            None => {
-                println!("No calibration data available");
-            }
-        }
-
-        self.data = Some(new_data);
-    }
-
-    fn calibrate_data(&mut self) {
-        match &self.data {
-            Some(data) => {
-                for line in data.lines() {
-                    match self.calibrate_value(line) {
-                        Ok(val) => self.calibrated_data.push(val),
-                        Err(_) => (),
-                    }
-                }
-            }
-            None => {
-                println!("No calibration data available");
-            }
-        }
-    }
-
-    fn calibrate_value(&self, line: &str) -> Result<u32, ParseIntError> {
+    fn calibrate_value(&self, line: &str) -> String {
         let mut first = char::default();
         let mut last = char::default();
 
@@ -135,18 +92,33 @@ impl Trebuchet {
 
         let res_string = format!("{}{}", first, last);
 
-        let result = match res_string.parse::<u32>() {
-            Ok(val) => Ok(val),
-            Err(err) => Err(err),
-        };
-        println!("Word result: {}", res_string);
-        result
+        res_string
     }
 
     fn get_calibrated_result(&self) {
         let sum: u32 = self.calibrated_data.iter().sum();
 
         println!("Calibrated result: {}", sum);
+    }
+
+    fn calibrate_data_per_line(&mut self) {
+        match &self.data {
+            Some(data) => {
+                for line in data.lines() {
+                    println!("Line: {}", line);
+                    let formatted_line = self.format_line(line.to_owned());
+                    println!("Formatted line: {}", formatted_line);
+                    let calibrated_line = self.calibrate_value(&formatted_line);
+                    println!("Calibrated line: {}", calibrated_line);
+
+                    let val = calibrated_line.parse::<u32>().unwrap_or(0);
+                    self.calibrated_data.push(val)
+                }
+            }
+            None => {
+                println!("No calibration data available");
+            }
+        }
     }
 
     fn run_calibration(&mut self) {
@@ -160,16 +132,14 @@ impl Trebuchet {
             }
         }
 
-        self.format_data();
-
-        self.calibrate_data();
+        self.calibrate_data_per_line();
 
         self.get_calibrated_result();
     }
 }
 
 pub fn main() {
-    let mut trebuchet = Trebuchet::new(r"data\test.txt".to_string());
+    let mut trebuchet = Trebuchet::new(r"data\input.txt".to_string());
 
     trebuchet.run_calibration();
 }
